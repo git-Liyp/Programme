@@ -17,6 +17,8 @@ var roomId = 0;
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var localStream = null;
+var remoteStream = null;
+var peerConnect = null;
 
 var ZeroRTCEngineTemp = null;
 var zeroRTCEngine = null;
@@ -44,7 +46,13 @@ ZeroRTCEngine.prototype.onOpen = function() {
 ZeroRTCEngine.prototype.onMessage = function(event) {
     console.log('接收到WebSocket消息 :' + event.data);
 
-    var jsonMeg = JSON.parse(event.data);   // 将json字符串转换成json对象
+    var jsonMeg = null;
+    try {
+        jsonMeg = JSON.parse(event.data);   // 将json字符串转换成json对象    
+    } catch (e) {
+        console.warn('接收到WebSocket消息不是json字符串 :' + event.data);
+        return;
+    }
 
     switch (jsonMeg.cmd) {
         case SIGNAL_TYPE_RESP_JOIN:
@@ -57,30 +65,58 @@ ZeroRTCEngine.prototype.onMessage = function(event) {
             handlePeerLeave(jsonMeg);
             break;
         case SIGNAL_TYPE_OFFER:
-            //handleOffer(jsonMeg);
+            handleOffer(jsonMeg);
             break;
         case SIGNAL_TYPE_ANSWER:
-            //handleAnswer(jsonMeg);
+            handleAnswer(jsonMeg);
             break;
         case SIGNAL_TYPE_CANDIDATE:
-            //handleCandidate(jsonMeg);
+            handleCandidate(jsonMeg);
             break;
         default:
             break;
     }
 }
 
-function handleRemoteNewPeer(message) {
-    console.log('handleRemoteNewPeer Remote Uid : ' + message.remoteUid);
-    remoteUserId = jsonMeg.remoteUid;
-    // doOffer();
+function handleResponseJoin(message) {
+    console.log('handleResponseJoin Remote Uid : ' + message.remoteUid);
+    remoteUserId = message.remoteUid;
 
 }
 
-function handleResponseJoin(message) {
-    console.log('handleResponseJoin Remote Uid : ' + message.remoteUid);
-    remoteUserId = jsonMeg.remoteUid;
-    // doOffer();
+function handleRemoteNewPeer(message) {
+    console.log('handleRemoteNewPeer Remote Uid : ' + message.remoteUid);
+    remoteUserId = message.remoteUid;
+    doOffer();
+}
+
+function handleOffer(message) {
+    console.log('handleOffer Remote Uid : ' + message.remoteUid);
+    if(peerConnect == null)
+    {
+        createPeerConnection();
+    }
+
+    var desc = JSON.parse(message.msg);
+    peerConnect.setRemoteDescription(desc);
+    doAnswer();
+}
+
+function handleAnswer(message) {
+    console.log('handleAnswer Remote Uid : ' + message.remoteUid);
+
+    var desc = JSON.parse(message.msg);
+    peerConnect.setRemoteDescription(desc);
+    // doCandidate();
+}
+
+function handleCandidate(message) {
+    console.log('handleCandidate Remote Uid : ' + message.remoteUid);
+
+    var candidate = JSON.parse(message.msg);
+    peerConnect.addIceCandidate(candidate).catch(e => {
+        console.error('addIceCandidate error : ' + e.name);
+    });
 }
 
 function handlePeerLeave(message) {
@@ -132,6 +168,97 @@ ZeroRTCEngine.prototype.createWebSocket = function() {
     }
 }
 
+function handleIceCandidate(event) {
+    console.log('handleIceCandidate....');
+    if (event.candidate) {
+        var jsonMsg = {
+            'cmd'   : 'candidate',
+            'roomId': roomId,
+            'uid': localUserId,
+            'remoteUid': remoteUserId,
+            'msg': JSON.stringify(event.candidate) // 将candidate对象转换成json字符串,含有sdp mid
+        };
+
+        var message = JSON.stringify(jsonMsg);  // 将jsonMeg对象转换成json字符串
+        zeroRTCEngine.sendMessage(message);     // 发送消息
+        console.info('handleIceCandidate message : ' + message);
+    }
+    else{
+        console.log(' IceCandidate end');
+    }
+}
+
+function handleRemoteTrackAddStream(event) {
+    console.log('handleRemoteTrackAddStream....');
+    remoteStream = event.streams[0];
+    remoteVideo.srcObject = remoteStream; // 远端视频流,显示远端视频
+
+}
+
+function createPeerConnection() {
+    console.log("createPeerConnection");
+    peerConnect = new RTCPeerConnection(null);
+
+    peerConnect.onicecandidate = handleIceCandidate;
+    peerConnect.ontrack = handleRemoteTrackAddStream;
+
+    if (localStream) {
+        localStream.getTracks().forEach(function(track) {
+            peerConnect.addTrack(track, localStream);
+        });
+    }
+}
+
+// 发送offer消息
+function createOfferAndSendMsg(session){
+    peerConnect.setLocalDescription(session)
+    .then(function() {
+        var jsonMsg = {
+            'cmd'   : 'offer',
+            'roomId': roomId,
+            'uid': localUserId,
+            'remoteUid': remoteUserId,
+            'msg': JSON.stringify(session) // 将session对象转换成json字符串,含有sdp mid
+        };
+
+        var message = JSON.stringify(jsonMsg);  // 将jsonMeg对象转换成json字符串
+        zeroRTCEngine.sendMessage(message);     // 发送消息
+        console.info('send Offer message : ' + message);
+    })
+    .catch(function(err) {
+        console.error("offer setLocalDescription error: " + err);
+    });
+}
+
+function handleCreateOfferError(err) {
+    console.error("handleCreateOfferError error: " + err);
+}
+
+// 发送Answer消息
+function createAnswerAndSendMsg(session){
+    peerConnect.setLocalDescription(session)
+    .then(function() {
+        var jsonMsg = {
+            'cmd'   : 'answer',
+            'roomId': roomId,
+            'uid': localUserId,
+            'remoteUid': remoteUserId,
+            'msg': JSON.stringify(session) // 将session对象转换成json字符串,含有sdp mid
+        };
+
+        var message = JSON.stringify(jsonMsg);  // 将jsonMeg对象转换成json字符串
+        zeroRTCEngine.sendMessage(message);     // 发送消息
+        console.info('send Answer message : ' + message);
+    })
+    .catch(function(err) {
+        console.error("Answer setLocalDescription error: " + err);
+    });
+}
+
+function handleCreateAnswerError(err) {
+    console.error("handleCreateAnswerError error: " + err);
+}
+
 // 发送加入房间消息
 function doJoin(roomId) {
     var jsonMeg = {
@@ -144,6 +271,27 @@ function doJoin(roomId) {
     zeroRTCEngine.sendMessage(message);     // 发送消息
     console.info('doJoin message : ' + message);
 }
+
+// 发送offer消息
+function doOffer() {
+    console.log('doOffer');
+    if(peerConnect == null)
+    {
+        createPeerConnection();
+    }
+    peerConnect.createOffer()
+    .then(createOfferAndSendMsg)    // 发送offer消息
+    .catch(handleCreateOfferError);
+}
+
+function doAnswer() {
+    console.log('doAnswer');
+
+    peerConnect.createAnswer()
+    .then(createAnswerAndSendMsg)    // 发送Answer消息
+    .catch(handleCreateAnswerError);
+}
+
 
 // 发送离开房间消息
 function doLeave() {
