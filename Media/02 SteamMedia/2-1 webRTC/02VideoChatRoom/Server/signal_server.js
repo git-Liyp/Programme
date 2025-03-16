@@ -147,7 +147,7 @@ function handleJoin(conn, jsonMsg) {
 
 }
 
-function handleleave(conn, jsonMsg) {
+function handleLeave(conn, jsonMsg) {
     var roomId  = jsonMsg.roomId;
     var uid     = jsonMsg.uid;
 
@@ -181,7 +181,112 @@ function handleleave(conn, jsonMsg) {
             console.info('notify peer: ' + remoteClient.uid + ', uid :' + uid + ' leave');
             remoteClient.conn.sendText(msg);    // 给对方发送消息
         }
-        
+
+    }
+}
+
+function handleOffer(conn, jsonMsg) {
+    var roomId      = jsonMsg.roomId;
+    var uid         = jsonMsg.uid;
+    var remoteUid   = jsonMsg.remoteUid;
+
+    console.log('handleOffer uid: ' + uid + ", room: " + roomId 
+                    + ", trans offer to remoteUid: " + remoteUid);
+
+    // 查询房间号是否存在
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.error('handleOffer roomId: ' + roomId + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （发送者）
+    if(roomMap.get(uid) == null) {
+        console.error('handleOffer uid: ' + uid + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （接受者）,将发送offer消息
+    var remoteClient = roomMap.get(remoteUid);
+    if(remoteClient == null) {
+        console.error('handleOffer remoteUid: ' + remoteUid + ' 不存在');
+        return;
+    }
+    else {
+        // 给对端发送offer
+        var msg = JSON.stringify(jsonMsg);
+        // console.info('handleOffer offer : ' + msg);
+        remoteClient.conn.sendText(msg);    // 给对方发送消息
+    }
+}
+
+function handleAnswer(conn, jsonMsg) {
+    var roomId      = jsonMsg.roomId;
+    var uid         = jsonMsg.uid;
+    var remoteUid   = jsonMsg.remoteUid;
+
+    console.log('handleAnswer uid: ' + uid + ", room: " + roomId 
+                    + ", trans answer to remoteUid: " + remoteUid);
+
+    // 查询房间号是否存在
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.error('handleAnswer roomId: ' + roomId + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （发送者）
+    if(roomMap.get(uid) == null) {
+        console.error('handleAnswer uid: ' + uid + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （接受者）,将发送offer消息
+    var remoteClient = roomMap.get(remoteUid);
+    if(remoteClient == null) {
+        console.error('handleAnswer remoteUid: ' + remoteUid + ' 不存在');
+        return;
+    }
+    else {
+        // 给对端发送offer
+        var msg = JSON.stringify(jsonMsg);
+        console.info('handleAnswer Answer : ' + msg);
+        remoteClient.conn.sendText(msg);    // 给对方发送消息
+    }
+}
+
+function handleCandidate(conn, jsonMsg) {
+    var roomId      = jsonMsg.roomId;
+    var uid         = jsonMsg.uid;
+    var remoteUid   = jsonMsg.remoteUid;
+
+    console.log('handleCandidate uid: ' + uid + ", room: " + roomId 
+                    + ", trans Candidate to remoteUid: " + remoteUid);
+
+    // 查询房间号是否存在
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.error('handleCandidate roomId: ' + roomId + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （发送者）
+    if(roomMap.get(uid) == null) {
+        console.error('handleCandidate uid: ' + uid + ' 不存在');
+        return;
+    }
+
+    // 查询对端是否存在 （接受者）,将发送offer消息
+    var remoteClient = roomMap.get(remoteUid);
+    if(remoteClient == null) {
+        console.error('handleCandidate remoteUid: ' + remoteUid + ' 不存在');
+        return;
+    }
+    else {
+        // 给对端发送offer
+        var msg = JSON.stringify(jsonMsg);
+        console.info('handleCandidate Candidate : ' + msg);
+        remoteClient.conn.sendText(msg);    // 给对方发送消息
     }
 }
 
@@ -195,7 +300,7 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
 
     conn.on('text', function (str) { // 监听客户端发送的消息
         console.info('Received msg: ' + str);
-        
+
         var jsonMsg = JSON.parse(str);
         switch (jsonMsg.cmd)
         {
@@ -206,7 +311,7 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
                 // 告知加入者对方是谁
                 break;
             case SIGNAL_TYPE_LEAVE:     // 主动离开房间
-                handleleave(conn, jsonMsg);
+                handleLeave(conn, jsonMsg);
                 break;
             case SIGNAL_TYPE_NEW_PEER:
                 // 有新的peer加入房间
@@ -215,12 +320,15 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
                 // 有peer离开房间
                 break;
             case SIGNAL_TYPE_OFFER:
+                handleOffer(conn, jsonMsg);
                 // 发起offer给对端peer
                 break;
             case SIGNAL_TYPE_ANSWER:
+                handleAnswer(conn, jsonMsg);
                 // 发起answer给对端peer
                 break;
             case SIGNAL_TYPE_CANDIDATE:
+                handleCandidate(conn, jsonMsg);
                 // 发起candidate给对端peer
                 break;
             default:
