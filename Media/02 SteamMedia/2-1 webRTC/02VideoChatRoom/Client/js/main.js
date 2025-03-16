@@ -1,14 +1,29 @@
 'use strict'
 
+// 信令常量定义 (客户端与服务器均需要定义，且保持一致)
+const SIGNAL_TYPE_JOIN       = "join";           // join        主动加入房间
+const SIGNAL_TYPE_RESP_JOIN  = "resp-join";      // resp-join   告知加入者对方是谁
+const SIGNAL_TYPE_LEAVE      = "leave";          // leave       主动离开房间
+const SIGNAL_TYPE_NEW_PEER   = "new-peer";       // new-peer    有新的peer加入房间
+const SIGNAL_TYPE_PEER_LEAVE = "peer-leave";     // peer-leave  有peer离开房间
+const SIGNAL_TYPE_OFFER      = "offer";          // offer       发起offer给对端peer
+const SIGNAL_TYPE_ANSWER     = "answer";         // answer      发起answer给对端peer
+const SIGNAL_TYPE_CANDIDATE  = "candidate";      // candidate   发起candidate给对端peer
+
+var localUserId = Math.random().toString(36).substr(2); // 本地用户id
+var remoteUserId = null;    // 对端用户id （远端）
+var roomId = 0;
+
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var localStream = null;
 
+var ZeroRTCEngineTemp = null;
 var zeroRTCEngine = null;
 
 var ZeroRTCEngine = function(wsUrl) {
     this.init(wsUrl);
-    zeroRTCEngine = this;
+    ZeroRTCEngineTemp = this;
     return this;
 }
 
@@ -28,6 +43,41 @@ ZeroRTCEngine.prototype.onOpen = function() {
 // message事件触发   添加onMessage方法
 ZeroRTCEngine.prototype.onMessage = function(event) {
     console.log('接收到WebSocket消息 :' + event.data);
+
+    var jsonMeg = JSON.parse(event.data);   // 将json字符串转换成json对象
+
+    switch (jsonMeg.cmd) {
+        case SIGNAL_TYPE_RESP_JOIN:
+            handleResponseJoin(jsonMeg);
+            break;
+        case SIGNAL_TYPE_NEW_PEER:
+            handleRemoteNewPeer(jsonMeg);
+            break;
+        case SIGNAL_TYPE_PEER_LEAVE:
+            //handlePeerLeave(jsonMeg);
+            break;
+        case SIGNAL_TYPE_OFFER:
+            //handleOffer(jsonMeg);
+            break;
+        case SIGNAL_TYPE_ANSWER:
+            //handleAnswer(jsonMeg);
+            break;
+        case SIGNAL_TYPE_CANDIDATE:
+            //handleCandidate(jsonMeg);
+            break;
+        default:
+            break;
+    }
+}
+
+function handleRemoteNewPeer(message) {
+    console.log('handleRemoteNewPeer Remote Uid : ' + message.remoteUid);
+    remoteUserId = jsonMeg.remoteUid;
+}
+
+function handleResponseJoin(message) {
+    console.log('handleResponseJoin Remote Uid : ' + message.remoteUid);
+    remoteUserId = jsonMeg.remoteUid;
 }
 
 // close事件触发   添加onClose方法
@@ -43,38 +93,53 @@ ZeroRTCEngine.prototype.onError = function(event) {
     console.log('WebSocket连接错误' + event.data);
 }
 
+// 发送消息方法   添加sendMessage方法
+ZeroRTCEngine.prototype.sendMessage = function(message) {
+    this.signaling.send(message);
+}
+
 // 创建webSocket方法   添加createWebSocket方法
 ZeroRTCEngine.prototype.createWebSocket = function() {
-    zeroRTCEngine = this;
+    ZeroRTCEngineTemp = this;
 
     // 将WebSocket对象赋值给signaling属性
-    zeroRTCEngine.signaling = new WebSocket(zeroRTCEngine.wsUrl);
+    ZeroRTCEngineTemp.signaling = new WebSocket(this.wsUrl);
 
     // 将webSocket的onopen事件绑定到自定义对象onopen方法
-    zeroRTCEngine.signaling.onopen = function() {
-        zeroRTCEngine.onOpen();
+    ZeroRTCEngineTemp.signaling.onopen = function() {
+        ZeroRTCEngineTemp.onOpen();
     }
 
     // 将webSocket的onmessage事件绑定到自定义对象onmessage方法
-    zeroRTCEngine.signaling.onmessage = function(event) {
-        zeroRTCEngine.onMessage(event);
+    ZeroRTCEngineTemp.signaling.onmessage = function(event) {
+        ZeroRTCEngineTemp.onMessage(event);
     }
 
-    zeroRTCEngine.signaling.onclose = function(event) {
-        zeroRTCEngine.onClose(event);
+    ZeroRTCEngineTemp.signaling.onclose = function(event) {
+        ZeroRTCEngineTemp.onClose(event);
     }
-    zeroRTCEngine.signaling.onerror = function(event) {
-        zeroRTCEngine.onError(event);
+    ZeroRTCEngineTemp.signaling.onerror = function(event) {
+        ZeroRTCEngineTemp.onError(event);
     }
-
 }
 
+function doJoin(roomId) {
+    var jsonMeg = {
+        'cmd'   : 'join',
+        'roomId': roomId,
+        'uid': localUserId,
+    };
 
+    var message = JSON.stringify(jsonMeg);  // 将jsonMeg对象转换成json字符串
+    zeroRTCEngine.sendMessage(message);     // 发送消息
+    console.info('doJoin message : ' + message);
+}
 
 // 打开本地视频流
 function openLocalStream(stream) {
     console.log('open Local Video Stream');
 
+    doJoin(roomId);
     localVideo.srcObject = stream;
     localStream = stream;
 }
@@ -95,7 +160,12 @@ zeroRTCEngine = new ZeroRTCEngine('ws://192.168.0.102:8001');
 zeroRTCEngine.createWebSocket();
 
 document.getElementById('joinBtn').onclick = function() {
-    console.log('加入按钮被点击了');
+    roomId = document.getElementById('zero-roomId').value;
+    if (roomId == '' || roomId == "请输入房间ID号") {
+        alert('请输入房间号');
+        return;
+    }
+    console.log('加入按钮被点击了 roomId : ' + roomId);
     // 初始化本地码流
     initLocalStream();
 };
