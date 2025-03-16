@@ -1,0 +1,58 @@
+<html>
+    <body>
+        <h1>websocket简易聊天室</h1>
+        <p>boss：LYP QQ：1140858405qq.com</p>
+        <div>
+            <input id="sendMsg" type="text" placeholder="请输入聊天内容">
+            <button id="submitBtn">发送</button>
+            <div id="errorMessage"></div>
+        </div>
+    </body>
+
+    <script type="text/JavaScript">
+        // 在网页显示聊天内容
+        function showMsg(str, type) {
+            var div = document.createElement('div');
+            div.innerHTML = str;
+            if (type == 'enter') {
+                div.style.color = 'green';
+            }else if (type == 'leave') {
+                div.style.color = 'red';
+            }
+            document.body.appendChild(div);
+        }
+
+        // 连接websocket
+        var websocket = new WebSocket('ws://127.0.0.1:7999');
+        // 打开websocket连接
+        websocket.onopen = function () {
+            console.log('websocket连接成功');
+
+            // // 获取错误信息显示的 div 元素
+            // const errorMessageDiv = document.getElementById('errorMessage');
+            // // 设置错误信息
+            // errorMessageDiv.textContent = `Failed to open mic: ${error.message}`;
+
+            document.getElementById('submitBtn').onclick = function () {
+                var txt = document.getElementById('sendMsg').value;
+                if (txt) {
+                    // 向服务器发送消息
+                    websocket.send(txt);
+                }
+            }
+        };
+
+        // 关闭连接
+        websocket.onclose = function () {
+            console.log('websocket连接关闭');
+        };
+
+        // 接收服务器消息
+        websocket.onmessage = function (e) {
+            var mes = JSON.parse(e.data);
+            showMsg(mes.data, mes.type);
+        };
+
+    </script>
+
+</html>
