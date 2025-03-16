@@ -147,6 +147,43 @@ function handleJoin(conn, jsonMsg) {
 
 }
 
+function handleleave(conn, jsonMsg) {
+    var roomId  = jsonMsg.roomId;
+    var uid     = jsonMsg.uid;
+
+    console.log('handleleave uid: ' + uid + "try to leave room: " + roomId);
+
+    // 查询房间号是否存在
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.error('roomId: ' + roomId + ' 不存在');
+        return;
+    }
+
+    // 将客户端从房间中移除
+    roomMap.remove(uid);
+
+    // 通知房间内其他客户端，有客户端离开
+    var clients = roomMap.getEntrys();  // 获取房间内所有客户端
+    for(var i in clients) {
+        var remoteUid = clients[i].key;
+         // 给对方发送离开消息
+        var jsonMsg = {
+            'cmd'   : SIGNAL_TYPE_PEER_LEAVE,
+            'remoteUid': uid // 告知对端自己的uid
+        };
+        var msg = JSON.stringify(jsonMsg);
+        console.info('peer leave : ' + msg);
+
+        var remoteClient = roomMap.get(remoteUid);
+        if(remoteClient)
+        {
+            console.info('notify peer: ' + remoteClient.uid + ', uid :' + uid + ' leave');
+            remoteClient.conn.sendText(msg);    // 给对方发送消息
+        }
+        
+    }
+}
 
 var ws = require('nodejs-websocket'); // 引入nodejs-websocket模块
 var port = 8001; // 设置端口
@@ -168,8 +205,8 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
             case SIGNAL_TYPE_RESP_JOIN:
                 // 告知加入者对方是谁
                 break;
-            case SIGNAL_TYPE_LEAVE:
-                // 主动离开房间
+            case SIGNAL_TYPE_LEAVE:     // 主动离开房间
+                handleleave(conn, jsonMsg);
                 break;
             case SIGNAL_TYPE_NEW_PEER:
                 // 有新的peer加入房间

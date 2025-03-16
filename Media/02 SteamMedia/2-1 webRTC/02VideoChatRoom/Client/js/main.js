@@ -54,7 +54,7 @@ ZeroRTCEngine.prototype.onMessage = function(event) {
             handleRemoteNewPeer(jsonMeg);
             break;
         case SIGNAL_TYPE_PEER_LEAVE:
-            //handlePeerLeave(jsonMeg);
+            handlePeerLeave(jsonMeg);
             break;
         case SIGNAL_TYPE_OFFER:
             //handleOffer(jsonMeg);
@@ -73,11 +73,20 @@ ZeroRTCEngine.prototype.onMessage = function(event) {
 function handleRemoteNewPeer(message) {
     console.log('handleRemoteNewPeer Remote Uid : ' + message.remoteUid);
     remoteUserId = jsonMeg.remoteUid;
+    // doOffer();
+
 }
 
 function handleResponseJoin(message) {
     console.log('handleResponseJoin Remote Uid : ' + message.remoteUid);
     remoteUserId = jsonMeg.remoteUid;
+    // doOffer();
+}
+
+function handlePeerLeave(message) {
+    console.log('handlePeerLeave Remote Uid : ' + message.remoteUid);
+    remoteUserId = null;    // 远端用户id置空
+    remoteVideo.srcObject = null; // 远端视频置空
 }
 
 // close事件触发   添加onClose方法
@@ -123,6 +132,7 @@ ZeroRTCEngine.prototype.createWebSocket = function() {
     }
 }
 
+// 发送加入房间消息
 function doJoin(roomId) {
     var jsonMeg = {
         'cmd'   : 'join',
@@ -135,6 +145,18 @@ function doJoin(roomId) {
     console.info('doJoin message : ' + message);
 }
 
+// 发送离开房间消息
+function doLeave() {
+    var jsonMeg = {
+        'cmd'   : 'leave',
+        'roomId': roomId,
+        'uid': localUserId,
+    };
+
+    var message = JSON.stringify(jsonMeg);  // 将jsonMeg对象转换成json字符串
+    zeroRTCEngine.sendMessage(message);     // 发送消息
+    console.info('doLeave message : ' + message);
+}
 // 打开本地视频流
 function openLocalStream(stream) {
     console.log('open Local Video Stream');
@@ -143,6 +165,7 @@ function openLocalStream(stream) {
     localVideo.srcObject = stream;
     localStream = stream;
 }
+
 
 // 初始化本地码流
 function initLocalStream() {
@@ -159,6 +182,7 @@ function initLocalStream() {
 zeroRTCEngine = new ZeroRTCEngine('ws://192.168.0.102:8001');
 zeroRTCEngine.createWebSocket();
 
+// 加入房间按钮点击事件
 document.getElementById('joinBtn').onclick = function() {
     roomId = document.getElementById('zero-roomId').value;
     if (roomId == '' || roomId == "请输入房间ID号") {
@@ -168,4 +192,12 @@ document.getElementById('joinBtn').onclick = function() {
     console.log('加入按钮被点击了 roomId : ' + roomId);
     // 初始化本地码流
     initLocalStream();
+};
+
+// 离开房间按钮点击事件
+document.getElementById('leaveBtn').onclick = function() {
+    console.log('离开按钮被点击了');
+
+    // 发送离开房间消息
+    doLeave();
 };
