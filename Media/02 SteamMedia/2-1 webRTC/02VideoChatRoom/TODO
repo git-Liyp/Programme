@@ -1,0 +1,21 @@
+工作记录
+
+客户端：
+1、创建操作界面 与 视频控件
+2、完成操作界面 与 视频控件的交互，打开本地视频流
+3、创建自定义MywebSocket对象，并将webSocket对象的触发事件绑定到MywebSocket对象上
+4、新增接收到join命令、resp-join命令的处理，当有人进入房间后，由服务端告知在房间的人
+5、新增接收到leave命令、resp-leave命令的处理，当有人离开房间后，由服务端告知在房间的人
+6、新增接收offer命令、answer命令、candidate命令的处理，用于处理offer、answer、candidate命令的处理
+7、新增doOffer、doAnswer、doCandidate方法，用于处理offer、answer、candidate命令
+   用于与客户端进行信令交互，完成视频通话
+
+
+
+服务端：
+1、新增服务端，进行监听客户端的连接
+2、新增服务端的join交互方法，用于加入房间，进入房间后，将房间内的所有用户信息返回给客户端
+3、新增服务端的leave交互方法，用于离开房间，离开房间后，将房间内的所有用户信息返回给客户端
+4、新增服务端的offer、answer、candidate交互方法，用于处理offer、answer、candidate命令
+   用于与客户端进行信令交互，完成视频通话
+
