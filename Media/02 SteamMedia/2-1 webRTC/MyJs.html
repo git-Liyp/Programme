@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html> 
+<body>
+<h2>Body 中的 JavaScript</h2> 
+<p id="demo">一个段落。</p>
+<button type="button" onclick="myFunction()">试一试</button> 
+<script>
+// 确保函数名具有描述性
+function updateParagraphText() {
+    // 使用常量来存储ID，以便于维护
+    const demoElement = document.getElementById("demo");
+    if (demoElement) {
+        demoElement.innerHTML = "段落已被更改。"; 
+    } else {
+        console.error("Element with id 'demo' not found.");
+    }
+}
+</script> 
+</body>
+</html>
