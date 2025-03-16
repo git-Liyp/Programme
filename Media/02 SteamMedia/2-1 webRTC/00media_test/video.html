@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <body>
+        <video id="video" autoplay playsinline></video>
+        <button id="showVideo">打开摄像头</button>
+        <div id="errorMessage"></div>
+        <p>通过getUserMedia()获取视频</p>
+
+    </body>
+    <script>
+        const constraints = {
+            audio: false,
+            video: true
+        };
+
+        // 处理成功打开摄像头的事件
+        function handleSuccess(stream) {
+            const video = document.querySelector("#video");
+            video.srcObject = stream;
+        }
+
+        // 处理错误打开摄像头的事件
+        function handleError(error) {
+            // 获取错误信息显示的 div 元素
+            const errorMessageDiv = document.getElementById('errorMessage');
+            // 设置错误信息
+            errorMessageDiv.textContent = `Failed to open camera: ${error.message}`;
+        }
+
+        // 处理打开摄像头的点击事件
+        function onOpenCamera(e) {
+            navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+        }
+
+        document.getElementById("showVideo").addEventListener("click", onOpenCamera);
+    </script>
+
+</html>
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Camera with Error Handling</title>
+</head>
+
+<body>
+    <button id="openCameraButton">Open Camera</button>
+    <div id="errorMessage"></div>
+
+    <script>
+        // 定义摄像头约束条件
+        const constraints = {
+            video: true,
+            audio: false
+        };
+
+        // 处理成功获取媒体流的情况
+        function handleSuccess(stream) {
+            // 这里可以将流显示在视频元素中
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            document.body.appendChild(video);
+        }
+
+        // 处理打开摄像头的点击事件
+        function onOpenCamera(e) {
+            navigator.mediaDevices.getUserMedia(constraints)
+              .then(handleSuccess)
+              .catch((error) => {
+                    // 获取错误信息显示的 div 元素
+                    const errorMessageDiv = document.getElementById('errorMessage');
+                    // 设置错误信息
+                    errorMessageDiv.textContent = `Failed to open camera: ${error.message}`;
+                });
+        }
+
+        // 为按钮添加点击事件监听器
+        const openCameraButton = document.getElementById('openCameraButton');
+        openCameraButton.addEventListener('click', onOpenCamera);
+    </script>
+</body>
+
+</html> -->

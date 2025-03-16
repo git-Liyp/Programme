@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <body>
+        <audio id="audio" autoplay controls></audio>
+        <button id="playAudio">打开麦克风</button>
+        <div id="errorMessage"></div>
+        <p>通过getUserMedia()开始录音播放</p>
+    </body>
+
+    <script>
+        const constraints = {
+            audio: true,
+            video: false
+        };
+
+        // 处理成功打开摄像头的事件
+        function handleSuccess(stream) {
+            const audio = document.querySelector("#audio");
+            audio.srcObject = stream;
+        }
+
+        // 处理错误打开摄像头的事件
+        function handleError(error) {
+            // 获取错误信息显示的 div 元素
+            const errorMessageDiv = document.getElementById('errorMessage');
+            // 设置错误信息
+            errorMessageDiv.textContent = `Failed to open mic: ${error.message}`;
+        }
+
+        // 处理打开摄像头的点击事件
+        function onOpenMicrophone (e) {
+            navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+        }
+
+        document.getElementById("playAudio").addEventListener("click", onOpenMicrophone);
+    </script>
+
+</html>

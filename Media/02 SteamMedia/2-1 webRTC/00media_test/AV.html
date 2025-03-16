@@ -1,0 +1,109 @@
+<!-- <!DOCTYPE html>
+<html lang="zh">
+    <body>
+        <video id="video" autoplay controls playsinline></video>
+        <button id="showVideo">打开摄像头</button>
+        <div id="errorMessage"></div>
+        <p>通过getUserMedia()获取视频</p>
+
+    </body>
+    <script>
+        const constraints = ({
+            video: false,
+            audio: true
+        });
+
+        // 处理成功打开摄像头的事件
+        function handleSuccess(stream) {
+            const audio = document.querySelector("#audio");
+            audio.srcObject = stream;
+        }
+
+        // 处理错误打开摄像头的事件
+        function handleError(error) {
+            const audio = document.querySelector("#audio");
+            audio.srcObject = stream;
+            // // 获取错误信息显示的 div 元素
+            // const errorMessageDiv = document.getElementById('errorMessage');
+            // // 设置错误信息
+            // errorMessageDiv.textContent = `Failed to open camera: ${error.message}`;
+        }
+
+        // 处理打开摄像头的点击事件
+        function onOpenCamera(e) {
+            navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+        }
+
+        document.getElementById("showVideo").addEventListener("click", onOpenCamera);
+    </script>
+
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="zh">
+    <body>
+        <video id="video" autoplay playsinline></video>
+        <button id="showVideo">打开摄像头</button>
+        <div id="errorVideoMessage"></div>
+        <p>通过getUserMedia()获取视频</p>
+        <audio id="audio" autoplay controls></audio>
+        <button id="playAudio">打开麦克风</button>
+        <div id="errorAudioMessage"></div>
+    </body>
+    <script>
+        const constraintsVideo = {
+            audio: false,
+            video: true
+        };
+
+        const constraintsAudio = {
+            audio: true,
+            video: false
+        };
+
+        // 处理成功打开摄像头的事件
+        function handleVSuccess(stream) {
+            const video = document.querySelector("#video");
+            video.srcObject = stream;
+        }
+
+        // 处理错误打开摄像头的事件
+        function handleVError(error) {
+            // 获取错误信息显示的 div 元素
+            const errorMessageDiv = document.getElementById('errorVideoMessage');
+            // 设置错误信息
+            errorMessageDiv.textContent = `Failed to open camera: ${error.message}`;
+        }
+
+        // 处理成功打开摄像头的事件
+        function handleASuccess(stream) {
+            const audio = document.querySelector("#audio");
+            audio.srcObject = stream;
+            // 文字提示正在开始录音
+            const message = document.getElementById('playAudio');
+            message.textContent = '正在开始录音'; // 添加提示信息
+        }
+
+        // 处理错误打开摄像头的事件
+        function handleAError(error) {
+            // 获取错误信息显示的 div 元素
+            const errorMessageDiv = document.getElementById('errorAudioMessage');
+            // 设置错误信息
+            errorMessageDiv.textContent = `Failed to open mic: ${error.message}`;
+        }
+        // 处理打开摄像头的点击事件
+        function onOpenCamera(e) {
+            navigator.mediaDevices.getUserMedia(constraintsVideo).then(handleVError).catch(handleVError);
+        }
+
+        function onOpenMicrophone(e) {
+            navigator.mediaDevices.getUserMedia(constraintsAudio).then(handleASuccess).catch(handleAError);
+        }
+
+        document.getElementById("showVideo").addEventListener("click", onOpenCamera);
+        document.getElementById("playAudio").addEventListener("click", onOpenMicrophone);
+
+    </script>
+
+</html>
