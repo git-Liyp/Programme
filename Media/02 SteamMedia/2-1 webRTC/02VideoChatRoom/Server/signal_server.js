@@ -110,7 +110,7 @@ function handleJoin(conn, jsonMsg) {
         // 加信令通知客户端房间已满
         conn.sendText('roomId: ' + roomId + ' 已经有两人存在，请使用其他房间');
         conn.close();
-        return;
+        return null;
     }
 
     // 将客户端加入房间
@@ -144,6 +144,7 @@ function handleJoin(conn, jsonMsg) {
 
         }
     }
+    return client;  // 返回客户端对象
 
 }
 
@@ -164,24 +165,72 @@ function handleLeave(conn, jsonMsg) {
     roomMap.remove(uid);
 
     // 通知房间内其他客户端，有客户端离开
-    var clients = roomMap.getEntrys();  // 获取房间内所有客户端
-    for(var i in clients) {
-        var remoteUid = clients[i].key;
-         // 给对方发送离开消息
-        var jsonMsg = {
-            'cmd'   : SIGNAL_TYPE_PEER_LEAVE,
-            'remoteUid': uid // 告知对端自己的uid
-        };
-        var msg = JSON.stringify(jsonMsg);
-        console.info('peer leave : ' + msg);
+    if(roomMap.size() >= 1) {
+        var clients = roomMap.getEntrys();  // 获取房间内所有客户端
+        for(var i in clients) {
+            var remoteUid = clients[i].key;
+            // 给对方发送离开消息
+            var jsonMsg = {
+                'cmd'   : SIGNAL_TYPE_PEER_LEAVE,
+                'remoteUid': uid // 告知对端自己的uid
+            };
+            var msg = JSON.stringify(jsonMsg);
+            console.info('peer leave : ' + msg);
 
-        var remoteClient = roomMap.get(remoteUid);
-        if(remoteClient)
-        {
-            console.info('notify peer: ' + remoteClient.uid + ', uid :' + uid + ' leave');
-            remoteClient.conn.sendText(msg);    // 给对方发送消息
+            var remoteClient = roomMap.get(remoteUid);
+            if(remoteClient)
+            {
+                console.info('notify peer: ' + remoteClient.uid + ', uid :' + uid + ' leave');
+                remoteClient.conn.sendText(msg);    // 给对方发送消息
+            }
         }
+    }
+}
 
+// 强制断开连接，对端离开
+function handleForceLeave(client) {
+    var roomId  = client.roomId;
+    var uid     = client.uid;
+
+    // 1、查询房间号是否存在
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.warn('handleForceLeave roomId: ' + roomId + ' 不存在');
+        return;
+    }
+
+    // 2. 判断uid是否在房间内
+    if(!roomMap.contains(uid)) {
+        console.info("uid not in room: " + uid + ", roomId: " + roomId);
+        return;
+    }
+
+    // 3. 将客户端从房间中移除
+    console.info('handleForceLeave uid: ' + uid + ", roomId: " + roomId);
+
+    // 将客户端从房间中移除
+    roomMap.remove(uid);
+
+    // 通知房间内其他客户端，有客户端离开
+    if(roomMap.size() >= 1) {
+        var clients = roomMap.getEntrys();  // 获取房间内所有客户端
+        for(var i in clients) {
+            var remoteUid = clients[i].key;
+            // 给对方发送离开消息
+            var jsonMsg = {
+                'cmd'   : SIGNAL_TYPE_PEER_LEAVE,
+                'remoteUid': uid // 告知对端自己的uid
+            };
+            var msg = JSON.stringify(jsonMsg);
+            console.info('peer leave : ' + msg);
+
+            var remoteClient = roomMap.get(remoteUid);
+            if(remoteClient)
+            {
+                console.info('notify peer: ' + remoteClient.uid + ', uid :' + uid + ' leave');
+                remoteClient.conn.sendText(msg);    // 给对方发送消息
+            }
+        }
     }
 }
 
@@ -296,6 +345,7 @@ var port = 8001; // 设置端口
 var server = ws.createServer(function (conn) { // 创建一个服务器
     console.log('New connection ----------');
 
+    conn.client = null;
     conn.sendText('Welcome to nodejs-websocket'); // 给客户端发送消息
 
     conn.on('text', function (str) { // 监听客户端发送的消息
@@ -305,7 +355,7 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
         switch (jsonMsg.cmd)
         {
             case SIGNAL_TYPE_JOIN:      // 主动加入房间
-                handleJoin(conn, jsonMsg);
+                conn.client = handleJoin(conn, jsonMsg);
                 break;
             case SIGNAL_TYPE_RESP_JOIN:
                 // 告知加入者对方是谁
@@ -339,6 +389,9 @@ var server = ws.createServer(function (conn) { // 创建一个服务器
 
     conn.on('close', function (code, reason) { // 监听客户端关闭连接
         console.log('Connection closed code: ' + code + ' reason: ' + reason);
+        if(conn.client != null) {        // 关闭连接情况时，将对端连接也关闭
+            handleForceLeave(conn.client);
+        }
     });
 
     conn.on('error', function (err) { // 监听客户端错误

@@ -121,8 +121,12 @@ function handleCandidate(message) {
 
 function handlePeerLeave(message) {
     console.log('handlePeerLeave Remote Uid : ' + message.remoteUid);
-    remoteUserId = null;    // 远端用户id置空
-    remoteVideo.srcObject = null; // 远端视频置空
+    remoteUserId = null;            // 远端用户id置空
+    remoteVideo.srcObject = null;   // 远端视频置空（页面）
+    if(peerConnect != null) {
+        peerConnect.close();
+        peerConnect = null;
+    }
 }
 
 // close事件触发   添加onClose方法
@@ -195,12 +199,47 @@ function handleRemoteTrackAddStream(event) {
 
 }
 
+function handleIceConnectionStateChange() {
+    if(peerConnect) {
+        console.log('iceConnectionStateChange : ' + peerConnect.iceConnectionState);
+    }
+}
+
+function handleConnectionStateChange() {
+    if(peerConnect) {
+        console.log('connectionStateChange : ' + peerConnect.connectionState);
+    }
+}
+
 function createPeerConnection() {
     console.log("createPeerConnection");
-    peerConnect = new RTCPeerConnection(null);
+    var defaultConfiguration = {  
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
+        iceTransportPolicy:"relay",//relay 或者 all
+        // 修改ice数组测试效果，需要进行封装
+        iceServers: [
+            {
+                "urls": [
+                    "turn:192.168.0.102:3478?transport=udp",
+                    "turn:192.168.0.102:3478?transport=tcp"       // 可以插入多个进行备选
+                ],
+                "username": "lyp",
+                "credential": "123456"
+            },
+            {
+                "urls": [
+                    "stun:192.168.0.102:3478"
+                ]
+            }
+        ]
+    };
+    peerConnect = new RTCPeerConnection(defaultConfiguration);
 
     peerConnect.onicecandidate = handleIceCandidate;
     peerConnect.ontrack = handleRemoteTrackAddStream;
+    peerConnect.oniceconnectionstatechange = handleIceConnectionStateChange;
+    peerConnect.onconnectionstatechange = handleConnectionStateChange;
 
     if (localStream) {
         localStream.getTracks().forEach(function(track) {
@@ -259,6 +298,30 @@ function handleCreateAnswerError(err) {
     console.error("handleCreateAnswerError error: " + err);
 }
 
+// 关闭本地视频流
+function closeLocalStream() {
+    console.log('closeLocalStream');
+    if (localStream) {
+        localStream.getTracks().forEach((track) => {
+            track.stop();
+        });
+        localStream = null;
+    }
+}
+
+function hangup() {
+    console.log(' hangup ......');
+    localStream.srcObject = null;   // 关闭本地视频流
+    remoteStream.srcObject = null;  // 关闭远端视频流
+    localVideo.srcObject = null;    // 关闭本地视频显示 （页面）
+    remoteVideo.srcObject = null;   // 关闭远端视频显示 （页面）
+    closeLocalStream(); // 关闭本地视频流
+    if (peerConnect) {  // 关闭RTC peerConnection连接
+        peerConnect.close();
+        peerConnect = null;
+    }
+}
+
 // 发送加入房间消息
 function doJoin(roomId) {
     var jsonMeg = {
@@ -303,8 +366,13 @@ function doLeave() {
 
     var message = JSON.stringify(jsonMeg);  // 将jsonMeg对象转换成json字符串
     zeroRTCEngine.sendMessage(message);     // 发送消息
+
     console.info('doLeave message : ' + message);
+
+    hangup();   // 挂断
 }
+
+
 // 打开本地视频流
 function openLocalStream(stream) {
     console.log('open Local Video Stream');
